@@ -1,0 +1,33 @@
+/* Simplified styling for Ordering App */
+.App {
+  text-align: center;
+  padding: 20px;
+  font-family: Arial, sans-serif;
+}
+.categories, .dishes, .cart, .create-dish, .create-category {
+  margin: 20px auto;
+  max-width: 400px;
+  text-align: left;
+}
+.categories ul, .dishes ul, .cart ul {
+  list-style: none;
+  padding: 0;
+}
+.categories li, .dishes li, .cart li {
+  padding: 8px;
+  border: 1px solid #ccc;
+  margin-bottom: 5px;
+  cursor: pointer;
+}
+.cart button {
+  margin-left: 10px;
+}
+input, select, button {
+  margin: 5px 0;
+  padding: 8px;
+  width: 100%;
+  box-sizing: border-box;
+}
+button {
+  cursor: pointer;
+}
