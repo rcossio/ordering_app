@@ -5,6 +5,14 @@ import './App.css';
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import logo from './logo.svg'; // placeholder image for dishes
+import Tabs from './components/Tabs';
+import DishGrid from './components/DishGrid';
+import Cart from './components/Cart';
+import OrdersList from './components/OrdersList';
+import CreateDishForm from './components/CreateDishForm';
+import CreateCategoryForm from './components/CreateCategoryForm';
+import IngredientManager from './components/IngredientManager';
+import EditDishModal from './components/EditDishModal';
 
 // API instance for backend (direct URL, server has CORS enabled)
 const API = axios.create({ baseURL: 'http://localhost:5000/api' });
@@ -14,7 +22,6 @@ const App = () => {
   const [categoryDishes, setCategoryDishes] = useState({});
   const [cart, setCart] = useState([]);
   const [newDish, setNewDish] = useState({ name: '', category: '', price: '', ingredients: [] });
-  const [newCategory, setNewCategory] = useState('');
   const [activeTab, setActiveTab] = useState('cashier');
   const [discount, setDiscount] = useState(0);
   const [tip, setTip] = useState(0);
@@ -102,8 +109,12 @@ const App = () => {
   const createDish = () => {
     API.post('/dishes', newDish)
       .then(response => {
+        const created = response.data;
         alert('Dish created successfully!');
+        // Clear form
         setNewDish({ name: '', category: '', price: '', ingredients: [] });
+        // Refresh this category's dishes so it appears in the menu
+        refreshCategoryDishes(created.category);
       })
       .catch(error => {
         console.error('Error creating dish:', error);
@@ -111,14 +122,11 @@ const App = () => {
       });
   };
 
-  const createCategory = () => {
-    console.log('Creating category:', newCategory);
-    API.post('/categories', { name: newCategory })
+  const createCategory = (name) => {
+    API.post('/categories', { name })
       .then(response => {
-        console.log('Category created:', response.data);
+        setCategories(prev => [...prev, response.data]);
         alert('Category created successfully!');
-        setCategories([...categories, response.data]);
-        setNewCategory('');
       })
       .catch(error => {
         console.error('Error creating category:', error);
@@ -235,205 +243,56 @@ const App = () => {
   return (
     <div className="App">
       <h1>Ordering App</h1>
-      <div className="tabs">
-        <button onClick={() => setActiveTab('cashier')} disabled={activeTab==='cashier'}>Cashier</button>
-        <button onClick={() => setActiveTab('orders')} disabled={activeTab==='orders'}>Orders</button>
-        <button onClick={() => setActiveTab('manage')} disabled={activeTab==='manage'}>Manage</button>
-      </div>
+      <Tabs activeTab={activeTab} setActiveTab={setActiveTab} />
       {activeTab === 'cashier' && (
         <>
-          <div className="categories-dishes">
-            {categories.map(category => (
-              <div key={category._id} className="category-block">
-                <h2>{category.name}</h2>
-                <div className="dish-grid">
-                  {(categoryDishes[category._id] || []).map(dish => (
-                    <div key={dish._id} className="dish-box" onClick={() => addToCart(dish)}>
-                      <img src={dish.image || logo} className="dish-image" alt={dish.name} />
-                      <div>{dish.name}</div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            ))}
-          </div>
-          <div className="cart">
-            <h2>Cart</h2>
-            <ul>
-              {cart.map(item => (
-                <li key={item._id}>
-                  <span>{item.name} x {item.quantity}</span>
-                  <button onClick={() => removeFromCart(item._id)}>-</button>
-                </li>
-              ))}
-            </ul>
-            <p>Subtotal: ${calculateTotal().toFixed(2)}</p>
-            <div className="discount-tip-group">
-              <label>
-                Discount
-                <input type="number" placeholder="0" value={discount} onChange={e => setDiscount(Number(e.target.value))} />
-              </label>
-              <label>
-                Tip
-                <input type="number" placeholder="0" value={tip} onChange={e => setTip(Number(e.target.value))} />
-              </label>
-            </div>
-            <p>Total: ${(calculateTotal() - discount + tip).toFixed(2)}</p>
-            <button onClick={confirmOrder}>Confirm Order</button>
-          </div>
+          <DishGrid categories={categories} categoryDishes={categoryDishes} onDishClick={addToCart} />
+          <Cart
+            cart={cart}
+            subtotal={calculateTotal()}
+            discount={discount}
+            tip={tip}
+            onRemove={removeFromCart}
+            onDiscountChange={setDiscount}
+            onTipChange={setTip}
+            onConfirm={confirmOrder}
+          />
         </>
       )}
       {activeTab === 'orders' && (
-        <div className="orders">
-          <h2>Past Orders</h2>
-          <ul>
-            {orders.map(o => (
-              <li key={o._id}>
-                {new Date(o.createdAt).toLocaleString()} - ${o.total} <button onClick={() => deleteOrder(o._id)}>Delete</button>
-              </li>
-            ))}
-          </ul>
-        </div>
+        <OrdersList orders={orders} onDelete={deleteOrder} />
       )}
       {activeTab === 'manage' && (
         <>
-          {/* Reuse cashier categories-dishes for editing */}
-          <div className="categories-dishes">
-            {categories.map(category => (
-              <div key={category._id} className="category-block">
-                <h2>{category.name}</h2>
-                <div className="dish-grid">
-                  {(categoryDishes[category._id] || []).map(dish => (
-                    <div key={dish._id} className="dish-box" onClick={() => handleOpenDish(dish)}>
-                      <img src={dish.image || logo} className="dish-image" alt={dish.name} />
-                      <div>{dish.name}</div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            ))}
-          </div>
-          <div className="create-dish">
-            <h2>Create Dish</h2>
-            <input
-              type="text"
-              placeholder="Dish Name"
-              value={newDish.name}
-              onChange={(e) => setNewDish({ ...newDish, name: e.target.value })}
-            />
-            <select
-              value={newDish.category}
-              onChange={(e) => setNewDish({ ...newDish, category: e.target.value })}
-            >
-              <option value="">Select Category</option>
-              {categories.map(category => (
-                <option key={category._id} value={category._id}>{category.name}</option>
-              ))}
-            </select>
-            <input
-              type="number"
-              placeholder="Price"
-              value={newDish.price}
-              onChange={(e) => setNewDish({ ...newDish, price: e.target.value })}
-            />
-            <h3>Ingredients</h3>
-            {newDish.ingredients.map((ing, idx) => (
-              <div key={idx} className="dish-ingredient-row">
-                <select
-                  value={ing.ingredient}
-                  onChange={e => updateDishIngredient(idx, 'ingredient', e.target.value)}
-                >
-                  <option value="">Select Ingredient</option>
-                  {ingredients.map(i => (
-                    <option key={i._id} value={i._id}>{i.name} ({i.unit})</option>
-                  ))}
-                </select>
-                <input
-                  type="number"
-                  value={ing.quantity}
-                  min={1}
-                  onChange={e => updateDishIngredient(idx, 'quantity', e.target.value)}
-                />
-                <button onClick={() => removeDishIngredient(idx)}>-</button>
-              </div>
-            ))}
-            <button onClick={addDishIngredient}>Add Ingredient</button>
-            <button onClick={createDish}>Create Dish</button>
-          </div>
-          <div className="create-category">
-            <h2>Create Category</h2>
-            <input
-              type="text"
-              placeholder="Category Name"
-              value={newCategory}
-              onChange={(e) => setNewCategory(e.target.value)}
-            />
-            <button onClick={createCategory}>Create Category</button>
-          </div>
-          {/* Ingredient Management */}
-          <div className="ingredients-management">
-            <h2>Manage Ingredients</h2>
-            <ul>
-              {ingredients.map(i => (
-                <li key={i._id}>
-                  {i.name} ({i.unit}) - ${i.price.toFixed(2)}
-                  <button onClick={() => deleteIngredient(i._id)}>Delete</button>
-                </li>
-              ))}
-            </ul>
-            <div className="create-ingredient">
-              <input
-                type="text"
-                placeholder="Name"
-                value={newIngredient.name}
-                onChange={e => setNewIngredient({ ...newIngredient, name: e.target.value })}
-              />
-              <select
-                value={newIngredient.unit}
-                onChange={e => setNewIngredient({ ...newIngredient, unit: e.target.value })}
-              >
-                <option value="g">g</option>
-                <option value="kg">kg</option>
-                <option value="unit">unit</option>
-                <option value="slice">slice</option>
-                <option value="general">general</option>
-              </select>
-              <input
-                type="number"
-                placeholder="Price"
-                value={newIngredient.price}
-                onChange={e => setNewIngredient({ ...newIngredient, price: Number(e.target.value) })}
-              />
-              <button onClick={createIngredient}>Add Ingredient</button>
-            </div>
-          </div>
+          <DishGrid categories={categories} categoryDishes={categoryDishes} onDishClick={handleOpenDish} />
+          <CreateDishForm
+            newDish={newDish}
+            categories={categories}
+            ingredients={ingredients}
+            onChange={(field, value) => setNewDish(prev => ({ ...prev, [field]: value }))}
+            onAddIngredient={addDishIngredient}
+            onUpdateIngredient={updateDishIngredient}
+            onRemoveIngredient={removeDishIngredient}
+            onCreate={createDish}
+          />
+          <CreateCategoryForm onCreate={createCategory} />
+          <IngredientManager
+            ingredients={ingredients}
+            newIngredient={newIngredient}
+            onNewChange={setNewIngredient}
+            onAdd={createIngredient}
+            onDelete={deleteIngredient}
+          />
         </>
       )}
-      {/* Modal for editing/deleting a dish */}
       {showModal && selectedDish && (
-        <div className="modal-overlay">
-          <div className="modal-content">
-            <h3>Edit Dish</h3>
-            <label>Name
-              <input type="text" value={selectedDish.name || ''} onChange={e => handleDishChange('name', e.target.value)} />
-            </label>
-            <label>Category
-              <select value={selectedDish.category || ''} onChange={e => handleDishChange('category', e.target.value)}>
-                <option value="">Select Category</option>
-                {categories.map(c => <option key={c._id} value={c._id}>{c.name}</option>)}
-              </select>
-            </label>
-            <label>Price
-              <input type="number" value={selectedDish.price || 0} onChange={e => handleDishChange('price', Number(e.target.value))} />
-            </label>
-            {/* Optionally list/edit recipe ingredients here if needed */}
-            <div className="modal-buttons">
-              <button type="button" onClick={handleCloseModal}>Cancel</button>
-              <button type="button" onClick={confirmDeleteDish}>Delete</button>
-              <button type="button" onClick={saveDish}>Save</button>
-            </div>
-          </div>
-        </div>
+        <EditDishModal
+          dish={selectedDish}
+          categories={categories}
+          onSave={saveDish}
+          onDelete={confirmDeleteDish}
+          onClose={handleCloseModal}
+        />
       )}
     </div>
   );

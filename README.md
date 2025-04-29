@@ -73,3 +73,28 @@ ordering_app/
 Deploy to Railway by linking your GitHub repo and setting env vars.
 
 *For detailed reports, ingredient management, and order history, see the project roadmap.*
+
+## User Stories
+
+These scenarios outline common cashier and manager workflows to verify the app’s features:
+
+1. Cashier Order Flow
+   - Cashier clicks two different dish cards in the **Cashier** tab to add each to the cart.
+   - In the cart pane, cashier clicks the “–” button next to one item to remove it.
+   - Cashier clicks **Confirm Order**, agrees in the confirmation dialog, and submits the order.
+   - Switch to the **Orders** tab and verify the new order appears with correct date, subtotal, discount, tip, and total.
+
+2. Immediate Menu Update
+   - In the **Manage** tab, manager uses the **Create Dish** form to add a new dish under a selected category.
+   - Switch to the **Cashier** tab, and the new dish card appears automatically in its category.
+   - In the cart pane, apply a discount and a tip using the labeled inputs.
+   - Confirm the order and verify discount and tip are applied correctly in the **Orders** tab.
+
+3. Edit and Delete Dishes
+   - In the **Manage** tab, manager clicks an existing dish card to open the **Edit Dish** modal.
+   - In the modal, update the dish’s price and select a different category, then click **Save**.
+   - Verify the dish card moves to the new category with updated price.
+   - Click another dish card, open the modal, and click **Delete** in the confirmation dialog.
+   - Verify the deleted dish no longer appears in any category list.
+
+*These user stories can be run end-to-end to fully validate both frontend and backend integrations.*
