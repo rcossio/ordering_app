@@ -1,6 +1,6 @@
 const express = require('express');
 const router = express.Router();
-const { Category, Dish, Order } = require('./models');
+const { Category, Dish, Ingredient, Order } = require('./models');
 
 // Example route
 router.get('/', (req, res) => {
@@ -31,15 +31,45 @@ router.get('/categories/:categoryId/dishes', async (req, res) => {
   }
 });
 
-// Create a new dish
+// Create a new dish with recipe ingredients
 router.post('/dishes', async (req, res) => {
   try {
-    const { name, category, price } = req.body;
-    const newDish = new Dish({ name, category, price });
+    const { name, category, price, ingredients } = req.body;
+    const newDish = new Dish({ name, category, price, ingredients });
     await newDish.save();
     res.status(201).json(newDish);
   } catch (err) {
-    res.status(500).json({ error: 'Failed to create dish' });
+    res.status(500).json({ error: 'Failed to create dish', details: err.message });
+  }
+});
+
+// Update a dish
+router.put('/dishes/:dishId', async (req, res) => {
+  try {
+    const updated = await Dish.findByIdAndUpdate(req.params.dishId, req.body, { new: true });
+    res.json(updated);
+  } catch (err) {
+    res.status(500).json({ error: 'Failed to update dish', details: err.message });
+  }
+});
+
+// Delete a dish
+router.delete('/dishes/:dishId', async (req, res) => {
+  try {
+    await Dish.findByIdAndDelete(req.params.dishId);
+    res.json({ message: 'Dish deleted' });
+  } catch (err) {
+    res.status(500).json({ error: 'Failed to delete dish', details: err.message });
+  }
+});
+
+// Optionally, fetch all dishes
+router.get('/dishes', async (req, res) => {
+  try {
+    const dishes = await Dish.find().populate('category');
+    res.json(dishes);
+  } catch (err) {
+    res.status(500).json({ error: 'Failed to fetch all dishes' });
   }
 });
 
@@ -97,6 +127,91 @@ router.delete('/orders/:orderId', async (req, res) => {
     res.json({ message: 'Order deleted' });
   } catch (err) {
     res.status(500).json({ error: 'Failed to delete order' });
+  }
+});
+
+// Ingredient CRUD endpoints
+router.get('/ingredients', async (req, res) => {
+  try {
+    const ingredients = await Ingredient.find();
+    res.json(ingredients);
+  } catch (err) {
+    res.status(500).json({ error: 'Failed to fetch ingredients' });
+  }
+});
+
+router.post('/ingredients', async (req, res) => {
+  try {
+    const { name, unit, price } = req.body;
+    const ingredient = new Ingredient({ name, unit, price });
+    await ingredient.save();
+    res.status(201).json(ingredient);
+  } catch (err) {
+    res.status(500).json({ error: 'Failed to create ingredient', details: err.message });
+  }
+});
+
+router.put('/ingredients/:ingredientId', async (req, res) => {
+  try {
+    const updated = await Ingredient.findByIdAndUpdate(
+      req.params.ingredientId,
+      req.body,
+      { new: true }
+    );
+    res.json(updated);
+  } catch (err) {
+    res.status(500).json({ error: 'Failed to update ingredient' });
+  }
+});
+
+router.delete('/ingredients/:ingredientId', async (req, res) => {
+  try {
+    await Ingredient.findByIdAndDelete(req.params.ingredientId);
+    res.json({ message: 'Ingredient deleted' });
+  } catch (err) {
+    res.status(500).json({ error: 'Failed to delete ingredient' });
+  }
+});
+
+// Generate ingredient usage and cost report over a date range
+router.get('/reports/ingredients', async (req, res) => {
+  try {
+    const { start, end } = req.query;
+    const filter = {};
+    if (start || end) filter.createdAt = {};
+    if (start) filter.createdAt.$gte = new Date(start);
+    if (end) filter.createdAt.$lte = new Date(end);
+    const orders = await Order.find(filter).populate({
+      path: 'dishes.dish',
+      populate: { path: 'ingredients.ingredient' }
+    });
+    const usageMap = {};
+    orders.forEach(order => {
+      order.dishes.forEach(({ dish, quantity: dishQty }) => {
+        if (!dish) return;
+        dish.ingredients.forEach(({ ingredient, quantity }) => {
+          if (!ingredient) return;
+          const key = ingredient._id.toString();
+          if (!usageMap[key]) {
+            usageMap[key] = {
+              ingredientId: ingredient._id,
+              name: ingredient.name,
+              unit: ingredient.unit,
+              price: ingredient.price,
+              totalQuantity: 0
+            };
+          }
+          usageMap[key].totalQuantity += quantity * dishQty;
+        });
+      });
+    });
+    const report = Object.values(usageMap).map(item => ({
+      ...item,
+      totalCost: item.totalQuantity * item.price
+    }));
+    res.json(report);
+  } catch (err) {
+    res.status(500).json({ error: 'Failed to generate ingredient report', details: err.message });
   }
 });
 

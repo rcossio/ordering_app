@@ -11,9 +11,10 @@ const dishSchema = new mongoose.Schema({
   category: { type: mongoose.Schema.Types.ObjectId, ref: 'Category', required: true },
   image: { type: String },
   ingredients: [{
-    ingredient: { type: mongoose.Schema.Types.ObjectId, ref: 'Ingredient' },
-    quantity: { type: String },
+    ingredient: { type: mongoose.Schema.Types.ObjectId, ref: 'Ingredient', required: true },
+    quantity: { type: Number, required: true }, // in units defined by Ingredient.unit
   }],
+  price: { type: Number, required: true },
 });
 
 // Ingredient Schema
