@@ -4,7 +4,6 @@ import './App.css';
 
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
-import logo from './logo.svg'; // placeholder image for dishes
 import Tabs from './components/Tabs';
 import DishGrid from './components/DishGrid';
 import Cart from './components/Cart';
@@ -30,6 +29,7 @@ const App = () => {
   const [newIngredient, setNewIngredient] = useState({ name: '', unit: 'unit', price: 0 });
   const [selectedDish, setSelectedDish] = useState(null);
   const [showModal, setShowModal] = useState(false);
+  const [manageSubTab, setManageSubTab] = useState('dishes');
 
   useEffect(() => {
     console.log('Fetching categories...');
@@ -191,15 +191,13 @@ const App = () => {
 
   // Handle opening dish modal for edit/delete
   const handleOpenDish = (dish) => {
-    setSelectedDish({ ...dish });
+    // keep track of the original category to refresh both lists after edit
+    setSelectedDish({ ...dish, originalCategory: dish.category });
     setShowModal(true);
   };
   const handleCloseModal = () => {
     setShowModal(false);
     setSelectedDish(null);
-  };
-  const handleDishChange = (field, value) => {
-    setSelectedDish(prev => ({ ...prev, [field]: value }));
   };
 
   // Helper to reload dishes of a category
@@ -209,14 +207,20 @@ const App = () => {
       .catch(err => console.error('Error refreshing dishes for category', categoryId, err));
   };
 
-  const saveDish = () => {
-    console.log('Saving dish', selectedDish);
-    API.put(`/dishes/${selectedDish._id}`, selectedDish)
+  const saveDish = (dishToSave) => {
+    console.log('Saving dish', dishToSave);
+    // remove helper field before sending
+    const { originalCategory, _id, ...dishData } = dishToSave;
+    API.put(`/dishes/${_id}`, dishData)
       .then(res => {
-        console.log('Dish saved response', res.data);
         const updated = res.data;
         alert('Dish saved successfully!');
+        // refresh updated category
         refreshCategoryDishes(updated.category);
+        // if category changed, refresh original category too
+        if (originalCategory && originalCategory !== updated.category) {
+          refreshCategoryDishes(originalCategory);
+        }
         handleCloseModal();
       })
       .catch(err => {
@@ -243,48 +247,68 @@ const App = () => {
   return (
     <div className="App">
       <h1>Ordering App</h1>
+      <div className="main-content">
+        {activeTab === 'cashier' && (
+          <>
+            <DishGrid categories={categories} categoryDishes={categoryDishes} onDishClick={addToCart} />
+            <Cart
+              cart={cart}
+              subtotal={calculateTotal()}
+              discount={discount}
+              tip={tip}
+              onRemove={removeFromCart}
+              onDiscountChange={setDiscount}
+              onTipChange={setTip}
+              onConfirm={confirmOrder}
+            />
+          </>
+        )}
+        {activeTab === 'orders' && (
+          <OrdersList orders={orders} onDelete={deleteOrder} />
+        )}
+        {activeTab === 'manage' && (
+          <div className="manage-section">
+            <div className="manage-tabs">
+              <button type="button" onClick={() => setManageSubTab('dishes')} disabled={manageSubTab === 'dishes'}>Dishes</button>
+              <button type="button" onClick={() => setManageSubTab('ingredients')} disabled={manageSubTab === 'ingredients'}>Ingredients</button>
+              <button type="button" onClick={() => setManageSubTab('categories')} disabled={manageSubTab === 'categories'}>Categories</button>
+            </div>
+            {manageSubTab === 'dishes' && (
+              <>
+                <CreateDishForm
+                  newDish={newDish}
+                  categories={categories}
+                  ingredients={ingredients}
+                  onChange={(field, value) => setNewDish(prev => ({ ...prev, [field]: value }))}
+                  onAddIngredient={addDishIngredient}
+                  onUpdateIngredient={updateDishIngredient}
+                  onRemoveIngredient={removeDishIngredient}
+                  onCreate={createDish}
+                />
+                <DishGrid categories={categories} categoryDishes={categoryDishes} onDishClick={handleOpenDish} />
+              </>
+            )}
+            {manageSubTab === 'ingredients' && (
+              <IngredientManager
+                ingredients={ingredients}
+                newIngredient={newIngredient}
+                onNewChange={setNewIngredient}
+                onAdd={createIngredient}
+                onDelete={deleteIngredient}
+              />
+            )}
+            {manageSubTab === 'categories' && (
+              <div className="categories-section">
+                <ul className="category-list">
+                  {categories.map(c => <li key={c._id}>{c.name}</li>)}
+                </ul>
+                <CreateCategoryForm onCreate={createCategory} />
+              </div>
+            )}
+          </div>
+        )}
+      </div>
       <Tabs activeTab={activeTab} setActiveTab={setActiveTab} />
-      {activeTab === 'cashier' && (
-        <>
-          <DishGrid categories={categories} categoryDishes={categoryDishes} onDishClick={addToCart} />
-          <Cart
-            cart={cart}
-            subtotal={calculateTotal()}
-            discount={discount}
-            tip={tip}
-            onRemove={removeFromCart}
-            onDiscountChange={setDiscount}
-            onTipChange={setTip}
-            onConfirm={confirmOrder}
-          />
-        </>
-      )}
-      {activeTab === 'orders' && (
-        <OrdersList orders={orders} onDelete={deleteOrder} />
-      )}
-      {activeTab === 'manage' && (
-        <>
-          <DishGrid categories={categories} categoryDishes={categoryDishes} onDishClick={handleOpenDish} />
-          <CreateDishForm
-            newDish={newDish}
-            categories={categories}
-            ingredients={ingredients}
-            onChange={(field, value) => setNewDish(prev => ({ ...prev, [field]: value }))}
-            onAddIngredient={addDishIngredient}
-            onUpdateIngredient={updateDishIngredient}
-            onRemoveIngredient={removeDishIngredient}
-            onCreate={createDish}
-          />
-          <CreateCategoryForm onCreate={createCategory} />
-          <IngredientManager
-            ingredients={ingredients}
-            newIngredient={newIngredient}
-            onNewChange={setNewIngredient}
-            onAdd={createIngredient}
-            onDelete={deleteIngredient}
-          />
-        </>
-      )}
       {showModal && selectedDish && (
         <EditDishModal
           dish={selectedDish}

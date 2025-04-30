@@ -2,12 +2,6 @@ const express = require('express');
 const router = express.Router();
 const { Category, Dish, Ingredient, Order } = require('./models');
 
-// Example route
-router.get('/', (req, res) => {
-    console.log('API is working');
-  res.send('API is working');
-});
-
 // Fetch all categories
 router.get('/categories', async (req, res) => {
   try {
