@@ -1,49 +1,17 @@
 import './App.css';
 import React, { useState, useEffect } from 'react';
-import axios from 'axios';
 import Tabs from './components/Tabs/Tabs';
-import DishGrid from './components/DishGrid/DishGrid';
-import CartContainer from './components/CartContainer';
 import OrdersContainer from './components/OrdersContainer';
-import IngredientManager from './components/IngredientManager';
-import DishModal from './components/DishModal';
-import DishManager from './components/DishManager';
-import CategoryManager from './components/CategoryManager';
 import Login from './components/Login/Login';
 import ManageSection from './components/ManageSection/ManageSection';
-
-// API instance for backend (direct URL, server has CORS enabled)
-const API = axios.create({ baseURL: 'http://localhost:5000/api' });
-
-// Add an interceptor to include the username header after login
-// Ensure Content-Type header is set to application/json
-API.interceptors.request.use((config) => {
-  const username = localStorage.getItem('username'); // Store username in localStorage after login
-  if (username) {
-    config.headers['x-username'] = username;
-  }
-  if (!config.headers['Content-Type']) {
-    config.headers['Content-Type'] = 'application/json';
-  }
-  return config;
-}, (error) => {
-  return Promise.reject(error);
-});
+import texts from './components/Texts';
+import CashierContainer from './components/CashierContainer';
+import API from './api'; // Import the API instance
 
 const App = () => {
   const [categories, setCategories] = useState([]);
   const [categoryDishes, setCategoryDishes] = useState({});
-  const [cart, setCart] = useState([]);
-  const [newDish, setNewDish] = useState({ name: '', category: '', price: '', ingredients: [] });
   const [activeTab, setActiveTab] = useState('cashier');
-  const [discount, setDiscount] = useState(0);
-  const [tip, setTip] = useState(0);
-  const [orders, setOrders] = useState([]);
-  const [ingredients, setIngredients] = useState([]);
-  const [newIngredient, setNewIngredient] = useState({ name: '', unit: 'unit', price: 0 });
-  const [selectedDish, setSelectedDish] = useState(null);
-  const [showModal, setShowModal] = useState(false);
-  const [manageView, setManageView] = useState('menu'); // 'menu', 'dishes', 'ingredients', 'categories'
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [userLanguage, setUserLanguage] = useState('en'); // Default to English
 
@@ -80,25 +48,6 @@ const App = () => {
     }
   }, [categories]);
 
-  // Fetch ingredients for management only after login
-  useEffect(() => {
-    // Update the endpoint to fetch ingredients from the correct route
-    if (isLoggedIn) {
-      API.get('/user/ingredients') // Updated to use /user prefix
-        .then(res => setIngredients(res.data))
-        .catch(err => console.error('Error fetching ingredients:', err));
-    }
-  }, [isLoggedIn]);
-
-  // Fetch orders when switching to Orders tab
-  useEffect(() => {
-    if (activeTab === 'orders') {
-      API.get('/user/orders')
-        .then(res => setOrders(res.data))
-        .catch(err => console.error('Error fetching orders:', err));
-    }
-  }, [activeTab]);
-
   useEffect(() => {
     if (isLoggedIn) {
       // Fetch the user's language from the backend or local storage after login
@@ -117,184 +66,10 @@ const App = () => {
     }
   }, [isLoggedIn]);
 
-  const addToCart = (dish) => {
-    setCart((prevCart) => {
-      const existingDish = prevCart.find((item) => item._id === dish._id);
-      if (existingDish) {
-        console.log(`Increasing quantity of ${dish.name}`);
-        return prevCart.map((item) =>
-          item._id === dish._id ? { ...item, quantity: item.quantity + 1 } : item
-        );
-      } else {
-        console.log(`Adding new dish to cart: ${dish.name}`);
-        return [...prevCart, { ...dish, quantity: 1 }];
-      }
-    });
-  };
-
-  const removeFromCart = (dishId) => {
-    setCart((prevCart) => {
-      const existingDish = prevCart.find((item) => item._id === dishId);
-      if (existingDish.quantity > 1) {
-        return prevCart.map((item) =>
-          item._id === dishId ? { ...item, quantity: item.quantity - 1 } : item
-        );
-      } else {
-        return prevCart.filter((item) => item._id !== dishId);
-      }
-    });
-  };
-
-  const calculateTotal = () => {
-    return cart.reduce((total, item) => total + item.quantity * (item.price || 0), 0);
-  };
-
-  const createDish = () => {
-    API.post('/user/dishes', newDish)
-      .then(response => {
-        const created = response.data;
-        alert('Dish created successfully!');
-        // Clear form
-        setNewDish({ name: '', category: '', price: '', ingredients: [] });
-        // Refresh this category's dishes so it appears in the menu
-        refreshCategoryDishes(created.category);
-      })
-      .catch(error => {
-        console.error('Error creating dish:', error);
-        alert('Failed to create dish.');
-      });
-  };
-
-  const createCategory = (name) => {
-    API.post('/user/categories', { name })
-      .then(response => {
-        setCategories(prev => [...prev, response.data]);
-        alert('Category created successfully!');
-      })
-      .catch(error => {
-        console.error('Error creating category:', error);
-        alert('Failed to create category.');
-      });
-  };
-
-  const confirmOrder = (cart, total, discount, tip) => {
-    if (!cart.length) return alert('Cart is empty');
-    if (!window.confirm('Confirm and save this order?')) return;
-    API.post('/user/orders', { dishes: cart, total, discount, tip })
-      .then(() => {
-        alert('Order saved!');
-      })
-      .catch(err => {
-        console.error('Error saving order:', err);
-        alert('Failed to save order');
-      });
-  };
-
-  const deleteOrder = (id) => {
-    if (!window.confirm('Delete this order?')) return;
-    API.delete(`/user/orders/${id}`)
-      .then(() => setOrders(orders.filter(o => o._id !== id)))
-      .catch(err => console.error('Error deleting order:', err));
-  };
-
-  // Handlers for dish ingredients
-  const addDishIngredient = () => {
-    setNewDish({ ...newDish, ingredients: [...newDish.ingredients, { ingredient: '', quantity: 1 }] });
-  };
-  const updateDishIngredient = (index, field, value) => {
-    const ing = [...newDish.ingredients];
-    ing[index][field] = field === 'quantity' ? Number(value) : value;
-    setNewDish({ ...newDish, ingredients: ing });
-  };
-  const removeDishIngredient = (index) => {
-    setNewDish({ ...newDish, ingredients: newDish.ingredients.filter((_, i) => i !== index) });
-  };
-
-  const createIngredient = () => {
-    const { name, unit, price } = newIngredient;
-    if (!name) return alert('Name required');
-    API.post('/user/ingredients', { name, unit, price })
-      .then(res => {
-        setIngredients([...ingredients, res.data]);
-        setNewIngredient({ name: '', unit: 'unit', price: 0 });
-      })
-      .catch(err => { console.error('Error creating ingredient:', err); alert('Failed to create ingredient'); });
-  };
-
-  const deleteIngredient = (id) => {
-    if (!window.confirm('Delete this ingredient?')) return;
-    API.delete(`/user/ingredients/${id}`)
-      .then(() => setIngredients(ingredients.filter(i => i._id !== id)))
-      .catch(err => console.error('Error deleting ingredient:', err));
-  };
-
-  // Handle opening dish modal for edit/delete
-  const handleOpenDish = (dish) => {
-    // keep track of the original category to refresh both lists after edit
-    setSelectedDish({ ...dish, originalCategory: dish.category });
-    setShowModal(true);
-  };
-  const handleCloseModal = () => {
-    setShowModal(false);
-    setSelectedDish(null);
-  };
-
-  // Helper to reload dishes of a category
-  const refreshCategoryDishes = (categoryId) => {
-    API.get(`/user/categories/${categoryId}/dishes`)
-      .then(res => setCategoryDishes(prev => ({ ...prev, [categoryId]: res.data })))
-      .catch(err => console.error('Error refreshing dishes for category', categoryId, err));
-  };
-
-  const saveDish = (dishToSave) => {
-    console.log('Saving dish', dishToSave);
-    // remove helper field before sending
-    const { originalCategory, _id, ...dishData } = dishToSave;
-    API.put(`/user/dishes/${_id}`, dishData)
-      .then(res => {
-        const updated = res.data;
-        alert('Dish saved successfully!');
-        // refresh updated category
-        refreshCategoryDishes(updated.category);
-        // if category changed, refresh original category too
-        if (originalCategory && originalCategory !== updated.category) {
-          refreshCategoryDishes(originalCategory);
-        }
-        handleCloseModal();
-      })
-      .catch(err => {
-        console.error('Error saving dish:', err);
-        alert('Failed to save dish. See console for details.');
-      });
-  };
-  const confirmDeleteDish = () => {
-    if (!window.confirm('Delete this dish?')) return;
-    console.log('Deleting dish', selectedDish._id);
-    API.delete(`/user/dishes/${selectedDish._id}`)
-      .then(res => {
-        console.log('Dish delete response', res.data);
-        alert('Dish deleted successfully!');
-        refreshCategoryDishes(selectedDish.category);
-        handleCloseModal();
-      })
-      .catch(err => {
-        console.error('Error deleting dish:', err);
-        alert('Failed to delete dish. See console for details.');
-      });
-  };
-
-  // Replace the title with the respective tab names
-  const getTabTitle = () => {
-    switch (activeTab) {
-      case 'cashier':
-        return 'Take an order';
-      case 'orders':
-        return 'Past orders';
-      case 'manage':
-        return 'Settings';
-      default:
-        return '';
-    }
+  // Handle login success from Login component
+  const handleLoginSuccess = (username) => {
+    setIsLoggedIn(true);
+    localStorage.setItem('username', username);
   };
 
   // Define the updateLanguage function to handle language updates
@@ -311,78 +86,34 @@ const App = () => {
       });
   };
 
-  // Update handleLogin to check if the user exists in the database
-  const handleLogin = (username, password) => {
-    API.get(`/auth/user/${username}`) // Updated to use /auth prefix
-      .then((response) => {
-        if (response.data) {
-          setIsLoggedIn(true);
-          localStorage.setItem('username', username); // Store username in localStorage
-        } else {
-          alert('Invalid username or password.');
-        }
-      })
-      .catch((error) => {
-        console.error('Error during login:', error);
-        alert('Failed to login. Please try again.');
-      });
-  };
-
   return (
     <div className="App">
       {!isLoggedIn ? (
-        <Login onLogin={handleLogin} />
+        <Login onLoginSuccess={handleLoginSuccess} />
       ) : (
         <>
-          <h1>{getTabTitle()}</h1>
+          <h1>{texts[userLanguage]?.tabTitles?.[activeTab] || 'Ordering App'}</h1>
           <div className="main-content">
             {activeTab === 'cashier' && (
-              <>
-                <DishGrid categories={categories} categoryDishes={categoryDishes} onDishClick={addToCart} />
-                <CartContainer 
-                  cart={cart} 
-                  onAddToCart={addToCart} 
-                  onRemoveFromCart={removeFromCart} 
-                  onConfirmOrder={confirmOrder} 
-                  userLanguage={userLanguage} 
-                />
-              </>
+              <CashierContainer
+                categories={categories}
+                categoryDishes={categoryDishes}
+                userLanguage={userLanguage}
+              />
             )}
             {activeTab === 'orders' && (
-              <OrdersContainer userLanguage={userLanguage} onDelete={deleteOrder} />
+              <OrdersContainer userLanguage={userLanguage} />
             )}
             {activeTab === 'manage' && (
               <ManageSection
                 categories={categories}
-                ingredients={ingredients}
-                newDish={newDish}
-                newIngredient={newIngredient}
                 categoryDishes={categoryDishes}
-                onDishChange={(field, value) => setNewDish(prev => ({ ...prev, [field]: value }))}
-                onAddDishIngredient={addDishIngredient}
-                onUpdateDishIngredient={updateDishIngredient}
-                onRemoveDishIngredient={removeDishIngredient}
-                onCreateDish={createDish}
-                onDishClick={handleOpenDish}
-                onCreateCategory={createCategory}
-                onNewIngredientChange={setNewIngredient}
-                onAddIngredient={createIngredient}
-                onDeleteIngredient={deleteIngredient}
                 userLanguage={userLanguage}
                 updateLanguage={updateLanguage}
               />
             )}
           </div>
           <Tabs activeTab={activeTab} setActiveTab={setActiveTab} />
-          {showModal && selectedDish && (
-            <DishModal
-              dish={selectedDish}
-              categories={categories}
-              onSave={saveDish}
-              onDelete={confirmDeleteDish}
-              onClose={handleCloseModal}
-            />
-          )}
         </>
       )}
     </div>

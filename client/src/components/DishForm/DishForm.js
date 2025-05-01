@@ -1,5 +1,6 @@
 import React from 'react';
-import texts from './Texts';
+import texts from '../Texts';
+import './DishForm.css';
 
 const DishForm = ({ newDish, categories, ingredients, onChange, onAddIngredient, onUpdateIngredient, onRemoveIngredient, onCreate, userLanguage }) => (
   <div className="create-dish">

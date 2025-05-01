@@ -1,59 +1,73 @@
 import React, { useState, useEffect } from 'react';
 import DishManager from '../DishManager';
-import IngredientManager from '../IngredientManager';
-import CategoryManager from '../CategoryManager';
+import IngredientManager from '../IngredientManager/IngredientManager';
+import CategoryManager from '../CategoryManager/CategoryManager';
 import texts from '../Texts';
+import API from '../../api';
+import DishModal from '../DishModal';
 import './ManageSection.css';
 
 const ManageSection = ({
   categories,
-  ingredients,
-  newDish,
-  newIngredient,
-  categoryDishes,
-  onDishChange,
-  onAddDishIngredient,
-  onUpdateDishIngredient,
-  onRemoveDishIngredient,
-  onCreateDish,
-  onDishClick,
-  onCreateCategory,
-  onNewIngredientChange,
-  onAddIngredient,
-  onDeleteIngredient,
   userLanguage,
-  updateLanguage
+  updateLanguage,
+  categoryDishes
 }) => {
   const [manageView, setManageView] = useState('menu');
+  const [newDish, setNewDish] = useState({ name: '', category: '', price: '', ingredients: [] });
+  const [selectedDish, setSelectedDish] = useState(null);
+  const [showModal, setShowModal] = useState(false);
 
   const handleBackToMenu = () => setManageView('menu');
 
-  // Add swipe detection logic
+  // Dish logic moved from App.js
+  const createDish = () => {
+    API.post('/user/dishes', newDish)
+      .then(response => {
+        alert('Dish created successfully!');
+        setNewDish({ name: '', category: '', price: '', ingredients: [] });
+        // Optionally refresh category dishes here if needed
+      })
+      .catch(error => {
+        console.error('Error creating dish:', error);
+        alert('Failed to create dish.');
+      });
+  };
+
+  const addDishIngredient = () => {
+    setNewDish({ ...newDish, ingredients: [...newDish.ingredients, { ingredient: '', quantity: 1 }] });
+  };
+  const updateDishIngredient = (index, field, value) => {
+    const ing = [...newDish.ingredients];
+    ing[index][field] = field === 'quantity' ? Number(value) : value;
+    setNewDish({ ...newDish, ingredients: ing });
+  };
+  const removeDishIngredient = (index) => {
+    setNewDish({ ...newDish, ingredients: newDish.ingredients.filter((_, i) => i !== index) });
+  };
+
+  const handleOpenDish = (dish) => {
+    setSelectedDish(dish);
+    setShowModal(true);
+  };
+  const handleCloseModal = () => {
+    setShowModal(false);
+    setSelectedDish(null);
+  };
+
+  // Add swipe detection logic (unchanged)
   useEffect(() => {
     let touchStartX = 0;
     let touchEndX = 0;
-
-    const handleTouchStart = (e) => {
-      touchStartX = e.changedTouches[0].screenX;
-    };
-
-    const handleTouchMove = (e) => {
-      touchEndX = e.changedTouches[0].screenX;
-    };
-
-    const handleTouchEnd = () => {
-      if (touchEndX > touchStartX + 50) { // Swipe right detected
-        handleBackToMenu();
-      }
-    };
-
+    const handleTouchStart = (e) => { touchStartX = e.changedTouches[0].screenX; };
+    const handleTouchMove = (e) => { touchEndX = e.changedTouches[0].screenX; };
+    const handleTouchEnd = () => { if (touchEndX > touchStartX + 50) { handleBackToMenu(); } };
     const manageSection = document.querySelector('.manage-section');
     if (manageSection) {
       manageSection.addEventListener('touchstart', handleTouchStart);
       manageSection.addEventListener('touchmove', handleTouchMove);
       manageSection.addEventListener('touchend', handleTouchEnd);
     }
-
     return () => {
       if (manageSection) {
         manageSection.removeEventListener('touchstart', handleTouchStart);
@@ -103,27 +117,29 @@ const ManageSection = ({
           <DishManager
             newDish={newDish}
             categories={categories}
-            ingredients={ingredients}
             categoryDishes={categoryDishes}
-            onChange={onDishChange}
-            onAddIngredient={onAddDishIngredient}
-            onUpdateIngredient={onUpdateDishIngredient}
-            onRemoveIngredient={onRemoveDishIngredient}
-            onCreate={onCreateDish}
-            onDishClick={onDishClick}
+            onChange={(field, value) => setNewDish(prev => ({ ...prev, [field]: value }))}
+            onAddIngredient={addDishIngredient}
+            onUpdateIngredient={updateDishIngredient}
+            onRemoveIngredient={removeDishIngredient}
+            onCreate={createDish}
+            onDishClick={handleOpenDish}
           />
+          {showModal && selectedDish && (
+            <DishModal
+              dish={selectedDish}
+              categories={categories}
+              onSave={() => {}} // Implement save logic if needed
+              onDelete={() => {}} // Implement delete logic if needed
+              onClose={handleCloseModal}
+            />
+          )}
         </div>
       )}
       {manageView === 'ingredients' && (
         <div className="manage-content">
           <button className="back-button" onClick={handleBackToMenu}>&lt; Back to Menu</button>
-          <IngredientManager
-            ingredients={ingredients}
-            newIngredient={newIngredient}
-            onNewChange={onNewIngredientChange}
-            onAdd={onAddIngredient}
-            onDelete={onDeleteIngredient}
-          />
+          <IngredientManager userLanguage={userLanguage} />
         </div>
       )}
       {manageView === 'categories' && (
@@ -133,7 +149,7 @@ const ManageSection = ({
             <ul className="category-list">
               {categories.map(c => <li key={c._id}>{c.name}</li>)}
             </ul>
-            <CategoryManager onCreate={onCreateCategory} userLanguage={userLanguage} />
+            <CategoryManager userLanguage={userLanguage} />
           </div>
         </div>
       )}

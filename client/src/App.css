@@ -59,47 +59,6 @@ h1 {
 }
 
 @media (max-width: 768px) {
-  /* Forms and managers: centered cards */
-  .create-dish,
-  .create-category,
-  .ingredient-manager {
-    width: 95%;
-    margin: 20px auto;
-    padding: 15px;
-    border: 1px solid #ddd;
-    border-radius: 8px;
-    background: #fafafa;
-    box-shadow: 0 1px 4px rgba(0,0,0,0.1);
-  }
-  .create-dish h2,
-  .create-category h2,
-  .ingredient-manager h2 {
-    text-align: center;
-    margin-bottom: 15px;
-  }
-  .create-dish input,
-  .create-dish select,
-  .create-category input,
-  .ingredient-manager input,
-  .ingredient-manager select {
-    width: 100%;
-    margin-bottom: 10px;
-    padding: 8px;
-    font-size: 1rem;
-    border-radius: 4px;
-    border: 1px solid #ccc;
-    box-sizing: border-box;
-  }
-  .create-dish button,
-  .create-category button,
-  .ingredient-manager button {
-    width: 100%;
-    padding: 10px;
-    margin-top: 10px;
-    font-size: 1rem;
-    border-radius: 4px;
-  }
-
   /* Bottom nav for mobile tabs */
   .App {
     padding-bottom: 60px;

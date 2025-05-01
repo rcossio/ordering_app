@@ -1,6 +1,11 @@
 // Texts for different languages
 const texts = {
   en: {
+    tabTitles: {
+      cashier: 'Take an order',
+      orders: 'Past Orders',
+      manage: 'Settings',
+    },
     tabs: {
       cashier: 'Cashier',
       orders: 'Orders',
@@ -20,6 +25,11 @@ const texts = {
     },
   },
   it: {
+    tabTitles: {
+      cashier: 'Prendi un ordine',
+      orders: 'Ordini Passati',
+      manage: 'Impostazioni',
+    },
     tabs: {
       cashier: 'Cassiere',
       orders: 'Ordini',

@@ -1,13 +1,25 @@
 import React, { useState } from 'react';
+import API from '../../api';
 import './Login.css';
 
-const Login = ({ onLogin }) => {
+const Login = ({ onLoginSuccess }) => {
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
 
   const handleLogin = (e) => {
     e.preventDefault();
-    onLogin(username, password);
+    API.get(`/auth/user/${username}`)
+      .then((response) => {
+        if (response.data) {
+          onLoginSuccess(username);
+        } else {
+          alert('Invalid username or password.');
+        }
+      })
+      .catch((error) => {
+        console.error('Error during login:', error);
+        alert('Failed to login. Please try again.');
+      });
   };
 
   return (
