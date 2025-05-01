@@ -1,6 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
+import texts from './Texts';
 
-const OrdersList = ({ orders, onDelete }) => {
+const OrdersList = ({ orders, onDelete, userLanguage }) => {
   const [showDelete, setShowDelete] = useState({});
   const timers = useRef({});
 
@@ -27,7 +28,7 @@ const OrdersList = ({ orders, onDelete }) => {
 
   return (
     <div className="orders">
-      <h2>Past Orders</h2>
+      <h2>{texts[userLanguage]?.pastOrders || texts['en'].pastOrders}</h2>
       <ul className="orders-list">
         {orders.map((order, idx) => (
           <li

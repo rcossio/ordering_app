@@ -1,8 +1,9 @@
 import React from 'react';
+import texts from './Texts';
 
-const DishForm = ({ newDish, categories, ingredients, onChange, onAddIngredient, onUpdateIngredient, onRemoveIngredient, onCreate }) => (
+const DishForm = ({ newDish, categories, ingredients, onChange, onAddIngredient, onUpdateIngredient, onRemoveIngredient, onCreate, userLanguage }) => (
   <div className="create-dish">
-    <h2>Create Dish</h2>
+    <h2>{texts[userLanguage]?.createDish || texts['en'].createDish}</h2>
     <input
       type="text"
       placeholder="Dish Name"

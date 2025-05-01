@@ -48,6 +48,7 @@ const App = () => {
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
+  const [userLanguage, setUserLanguage] = useState('en'); // Default to English
 
   // Move category fetching logic to after login
   useEffect(() => {
@@ -100,6 +101,24 @@ const App = () => {
         .catch(err => console.error('Error fetching orders:', err));
     }
   }, [activeTab]);
+
+  useEffect(() => {
+    if (isLoggedIn) {
+      // Fetch the user's language from the backend or local storage after login
+      const fetchUserLanguage = async () => {
+        try {
+          const response = await API.get('/user/language');
+          setUserLanguage(response.data.language || 'en');
+        } catch (error) {
+          console.error('Error fetching user language:', error);
+          const storedLanguage = localStorage.getItem('userLanguage');
+          setUserLanguage(storedLanguage || 'en');
+        }
+      };
+
+      fetchUserLanguage();
+    }
+  }, [isLoggedIn]);
 
   const addToCart = (dish) => {
     setCart((prevCart) => {
@@ -326,6 +345,8 @@ const App = () => {
     API.put('/user/language', { language })
       .then((response) => {
         alert(`Language updated to ${response.data.language}`);
+        setUserLanguage(response.data.language);
+        localStorage.setItem('userLanguage', response.data.language);
       })
       .catch((error) => {
         console.error('Error updating language:', error);
@@ -388,6 +409,7 @@ const App = () => {
                   onDiscountChange={setDiscount}
                   onTipChange={setTip}
                   onConfirm={confirmOrder}
+                  userLanguage={userLanguage} // Pass the userLanguage prop
                 />
               </>
             )}

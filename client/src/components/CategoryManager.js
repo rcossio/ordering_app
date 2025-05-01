@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
+import texts from './Texts';
 
-const CreateCategoryForm = ({ onCreate }) => {
+const CreateCategoryForm = ({ onCreate, userLanguage }) => {
   const [name, setName] = useState('');
 
   const handleCreate = () => {
@@ -11,7 +12,7 @@ const CreateCategoryForm = ({ onCreate }) => {
 
   return (
     <div className="create-category">
-      <h2>Create Category</h2>
+      <h2>{texts[userLanguage]?.createCategory || texts['en'].createCategory}</h2>
       <input
         type="text"
         placeholder="Category Name"

@@ -1,8 +1,9 @@
 import React from 'react';
+import texts from './Texts';
 
-const Cart = ({ cart, subtotal, discount, tip, onRemove, onDiscountChange, onTipChange, onConfirm }) => (
+const Cart = ({ cart, subtotal, discount, tip, onRemove, onDiscountChange, onTipChange, onConfirm, userLanguage }) => (
   <div className="cart">
-    <h2>Cart</h2>
+    <h2>{texts[userLanguage]?.texts.cart || texts['en'].texts.cart}</h2>
     <ul>
       {cart.map(item => (
         <li key={item._id}>

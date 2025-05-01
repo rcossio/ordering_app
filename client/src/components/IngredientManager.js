@@ -1,8 +1,9 @@
 import React from 'react';
+import texts from './Texts';
 
-const IngredientManager = ({ ingredients, newIngredient, onNewChange, onAdd, onDelete }) => (
+const IngredientManager = ({ ingredients, newIngredient, onNewChange, onAdd, onDelete, userLanguage }) => (
   <div className="ingredients-management">
-    <h2>Manage Ingredients</h2>
+    <h2>{texts[userLanguage]?.manageIngredients || texts['en'].manageIngredients}</h2>
     <ul>
       {ingredients.map(i => (
         <li key={i._id}>

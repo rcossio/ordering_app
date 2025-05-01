@@ -216,7 +216,7 @@ router.get('/reports/ingredients', async (req, res) => {
 });
 
 // Get the user's language configuration
-router.get('/user/language', async (req, res) => {
+router.get('/language', async (req, res) => {
   try {
     res.json({ language: req.user.language });
   } catch (err) {
@@ -225,7 +225,7 @@ router.get('/user/language', async (req, res) => {
 });
 
 // Update the user's language configuration
-router.put('/user/language', async (req, res) => {
+router.put('/language', async (req, res) => {
   try {
     const { language } = req.body;
     req.user.language = language;
