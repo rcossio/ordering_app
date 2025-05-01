@@ -8,10 +8,10 @@ import Tabs from './components/Tabs';
 import DishGrid from './components/DishGrid';
 import Cart from './components/Cart';
 import OrdersList from './components/OrdersList';
-import CreateDishForm from './components/CreateDishForm';
-import CreateCategoryForm from './components/CreateCategoryForm';
 import IngredientManager from './components/IngredientManager';
-import EditDishModal from './components/EditDishModal';
+import DishModal from './components/DishModal';
+import DishManager from './components/DishManager';
+import CategoryManager from './components/CategoryManager';
 
 // API instance for backend (direct URL, server has CORS enabled)
 const API = axios.create({ baseURL: 'http://localhost:5000/api' });
@@ -274,19 +274,18 @@ const App = () => {
               <button type="button" onClick={() => setManageSubTab('categories')} disabled={manageSubTab === 'categories'}>Categories</button>
             </div>
             {manageSubTab === 'dishes' && (
-              <>
-                <CreateDishForm
-                  newDish={newDish}
-                  categories={categories}
-                  ingredients={ingredients}
-                  onChange={(field, value) => setNewDish(prev => ({ ...prev, [field]: value }))}
-                  onAddIngredient={addDishIngredient}
-                  onUpdateIngredient={updateDishIngredient}
-                  onRemoveIngredient={removeDishIngredient}
-                  onCreate={createDish}
-                />
-                <DishGrid categories={categories} categoryDishes={categoryDishes} onDishClick={handleOpenDish} />
-              </>
+              <DishManager
+                newDish={newDish}
+                categories={categories}
+                ingredients={ingredients}
+                categoryDishes={categoryDishes}
+                onChange={(field, value) => setNewDish(prev => ({ ...prev, [field]: value }))}
+                onAddIngredient={addDishIngredient}
+                onUpdateIngredient={updateDishIngredient}
+                onRemoveIngredient={removeDishIngredient}
+                onCreate={createDish}
+                onDishClick={handleOpenDish}
+              />
             )}
             {manageSubTab === 'ingredients' && (
               <IngredientManager
@@ -302,7 +301,7 @@ const App = () => {
                 <ul className="category-list">
                   {categories.map(c => <li key={c._id}>{c.name}</li>)}
                 </ul>
-                <CreateCategoryForm onCreate={createCategory} />
+                <CategoryManager onCreate={createCategory} />
               </div>
             )}
           </div>
@@ -310,7 +309,7 @@ const App = () => {
       </div>
       <Tabs activeTab={activeTab} setActiveTab={setActiveTab} />
       {showModal && selectedDish && (
-        <EditDishModal
+        <DishModal
           dish={selectedDish}
           categories={categories}
           onSave={saveDish}

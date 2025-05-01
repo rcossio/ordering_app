@@ -23,4 +23,5 @@ const CreateCategoryForm = ({ onCreate }) => {
   );
 };
 
-export default CreateCategoryForm;
+const CategoryManager = CreateCategoryForm;
+export default CategoryManager;

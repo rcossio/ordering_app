@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import Modal from './Modal';
 
-const EditDishModal = ({ dish, categories, onSave, onDelete, onClose }) => {
+const DishModal = ({ dish, categories, onSave, onDelete, onClose }) => {
   const [edited, setEdited] = useState(dish);
 
   useEffect(() => {
@@ -45,4 +45,4 @@ const EditDishModal = ({ dish, categories, onSave, onDelete, onClose }) => {
   );
 };
 
-export default EditDishModal;
+export default DishModal;

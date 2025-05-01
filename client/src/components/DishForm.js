@@ -1,6 +1,6 @@
 import React from 'react';
 
-const CreateDishForm = ({ newDish, categories, ingredients, onChange, onAddIngredient, onUpdateIngredient, onRemoveIngredient, onCreate }) => (
+const DishForm = ({ newDish, categories, ingredients, onChange, onAddIngredient, onUpdateIngredient, onRemoveIngredient, onCreate }) => (
   <div className="create-dish">
     <h2>Create Dish</h2>
     <input
@@ -48,4 +48,4 @@ const CreateDishForm = ({ newDish, categories, ingredients, onChange, onAddIngre
   </div>
 );
 
-export default CreateDishForm;
+export default DishForm;
