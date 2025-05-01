@@ -1,5 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
-import texts from './Texts';
+import texts from '../Texts';
+import './OrdersList.css';
 
 const OrdersList = ({ orders, onDelete, userLanguage }) => {
   const [showDelete, setShowDelete] = useState({});

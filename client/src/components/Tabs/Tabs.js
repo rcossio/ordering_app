@@ -1,7 +1,8 @@
 import React from 'react';
-import cashierIcon from './icons/cashier.svg';
-import ordersIcon from './icons/orders.svg';
-import manageIcon from './icons/manage.svg';
+import cashierIcon from '../icons/cashier.svg';
+import ordersIcon from '../icons/orders.svg';
+import manageIcon from '../icons/manage.svg';
+import './Tabs.css';
 
 const Tabs = ({ activeTab, setActiveTab }) => (
   <div className="tabs">

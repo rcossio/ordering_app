@@ -1,5 +1,6 @@
 import React from 'react';
-import texts from './Texts';
+import texts from '../Texts';
+import './Cart.css';
 
 const Cart = ({ cart, subtotal, discount, tip, onRemove, onDiscountChange, onTipChange, onConfirm, userLanguage }) => (
   <div className="cart">

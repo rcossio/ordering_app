@@ -1,6 +1,6 @@
 import React from 'react';
 import DishForm from './DishForm';
-import DishGrid from './DishGrid';
+import DishGrid from './DishGrid/DishGrid';
 
 const DishManager = ({
   newDish,

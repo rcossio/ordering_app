@@ -1,17 +1,16 @@
 import './App.css';
-
-// Add basic styling for categories and dishes
-
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
-import Tabs from './components/Tabs';
-import DishGrid from './components/DishGrid';
-import Cart from './components/Cart';
-import OrdersList from './components/OrdersList';
+import Tabs from './components/Tabs/Tabs';
+import DishGrid from './components/DishGrid/DishGrid';
+import CartContainer from './components/CartContainer';
+import OrdersContainer from './components/OrdersContainer';
 import IngredientManager from './components/IngredientManager';
 import DishModal from './components/DishModal';
 import DishManager from './components/DishManager';
 import CategoryManager from './components/CategoryManager';
+import Login from './components/Login/Login';
+import ManageSection from './components/ManageSection/ManageSection';
 
 // API instance for backend (direct URL, server has CORS enabled)
 const API = axios.create({ baseURL: 'http://localhost:5000/api' });
@@ -46,8 +45,6 @@ const App = () => {
   const [showModal, setShowModal] = useState(false);
   const [manageView, setManageView] = useState('menu'); // 'menu', 'dishes', 'ingredients', 'categories'
   const [isLoggedIn, setIsLoggedIn] = useState(false);
-  const [username, setUsername] = useState('');
-  const [password, setPassword] = useState('');
   const [userLanguage, setUserLanguage] = useState('en'); // Default to English
 
   // Move category fetching logic to after login
@@ -124,10 +121,12 @@ const App = () => {
     setCart((prevCart) => {
       const existingDish = prevCart.find((item) => item._id === dish._id);
       if (existingDish) {
+        console.log(`Increasing quantity of ${dish.name}`);
         return prevCart.map((item) =>
           item._id === dish._id ? { ...item, quantity: item.quantity + 1 } : item
         );
       } else {
+        console.log(`Adding new dish to cart: ${dish.name}`);
         return [...prevCart, { ...dish, quantity: 1 }];
       }
     });
@@ -178,16 +177,12 @@ const App = () => {
       });
   };
 
-  const confirmOrder = () => {
+  const confirmOrder = (cart, total, discount, tip) => {
     if (!cart.length) return alert('Cart is empty');
     if (!window.confirm('Confirm and save this order?')) return;
-    const total = calculateTotal();
     API.post('/user/orders', { dishes: cart, total, discount, tip })
       .then(() => {
         alert('Order saved!');
-        setCart([]);
-        setDiscount(0);
-        setTip(0);
       })
       .catch(err => {
         console.error('Error saving order:', err);
@@ -288,44 +283,6 @@ const App = () => {
       });
   };
 
-  // Function to handle back navigation
-  const handleBackToMenu = () => setManageView('menu');
-
-  // Add swipe detection logic
-  useEffect(() => {
-    let touchStartX = 0;
-    let touchEndX = 0;
-
-    const handleTouchStart = (e) => {
-      touchStartX = e.changedTouches[0].screenX;
-    };
-
-    const handleTouchMove = (e) => {
-      touchEndX = e.changedTouches[0].screenX;
-    };
-
-    const handleTouchEnd = () => {
-      if (touchEndX > touchStartX + 50) { // Swipe right detected
-        handleBackToMenu();
-      }
-    };
-
-    const manageSection = document.querySelector('.manage-section');
-    if (manageSection) {
-      manageSection.addEventListener('touchstart', handleTouchStart);
-      manageSection.addEventListener('touchmove', handleTouchMove);
-      manageSection.addEventListener('touchend', handleTouchEnd);
-    }
-
-    return () => {
-      if (manageSection) {
-        manageSection.removeEventListener('touchstart', handleTouchStart);
-        manageSection.removeEventListener('touchmove', handleTouchMove);
-        manageSection.removeEventListener('touchend', handleTouchEnd);
-      }
-    };
-  }, [manageView]);
-
   // Replace the title with the respective tab names
   const getTabTitle = () => {
     switch (activeTab) {
@@ -355,8 +312,7 @@ const App = () => {
   };
 
   // Update handleLogin to check if the user exists in the database
-  const handleLogin = (e) => {
-    e.preventDefault();
+  const handleLogin = (username, password) => {
     API.get(`/auth/user/${username}`) // Updated to use /auth prefix
       .then((response) => {
         if (response.data) {
@@ -375,24 +331,7 @@ const App = () => {
   return (
     <div className="App">
       {!isLoggedIn ? (
-        <div className="login-page">
-          <h1>Ordering App</h1>
-          <form onSubmit={handleLogin} className="login-form">
-            <input
-              type="text"
-              placeholder="Username"
-              value={username}
-              onChange={(e) => setUsername(e.target.value)}
-            />
-            <input
-              type="password"
-              placeholder="Password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-            />
-            <button type="submit">Login</button>
-          </form>
-        </div>
+        <Login onLogin={handleLogin} />
       ) : (
         <>
           <h1>{getTabTitle()}</h1>
@@ -400,110 +339,38 @@ const App = () => {
             {activeTab === 'cashier' && (
               <>
                 <DishGrid categories={categories} categoryDishes={categoryDishes} onDishClick={addToCart} />
-                <Cart
-                  cart={cart}
-                  subtotal={calculateTotal()}
-                  discount={discount}
-                  tip={tip}
-                  onRemove={removeFromCart}
-                  onDiscountChange={setDiscount}
-                  onTipChange={setTip}
-                  onConfirm={confirmOrder}
-                  userLanguage={userLanguage} // Pass the userLanguage prop
+                <CartContainer 
+                  cart={cart} 
+                  onAddToCart={addToCart} 
+                  onRemoveFromCart={removeFromCart} 
+                  onConfirmOrder={confirmOrder} 
+                  userLanguage={userLanguage} 
                 />
               </>
             )}
             {activeTab === 'orders' && (
-              <OrdersList orders={orders} onDelete={deleteOrder} />
+              <OrdersContainer userLanguage={userLanguage} onDelete={deleteOrder} />
             )}
             {activeTab === 'manage' && (
-              <div className="manage-section">
-                {manageView === 'menu' && (
-                  <div className="manage-menu">
-                    <button onClick={() => setManageView('dishes')}>
-                      <div className="icon-container">
-                        <img src={require('./components/icons/dishes.svg').default} alt="Manage Dishes" />
-                      </div>
-                      <div className="text-container">Manage Dishes</div>
-                      <div className="arrow-container">&gt;</div>
-                    </button>
-                    <button onClick={() => setManageView('ingredients')}>
-                      <div className="icon-container">
-                        <img src={require('./components/icons/ingredients.svg').default} alt="Manage Ingredients" />
-                      </div>
-                      <div className="text-container">Manage Ingredients</div>
-                      <div className="arrow-container">&gt;</div>
-                    </button>
-                    <button onClick={() => setManageView('categories')}>
-                      <div className="icon-container">
-                        <img src={require('./components/icons/categories.svg').default} alt="Manage Categories" />
-                      </div>
-                      <div className="text-container">Manage Categories</div>
-                      <div className="arrow-container">&gt;</div>
-                    </button>
-                    <button onClick={() => setManageView('language')}>
-                      <div className="icon-container">
-                        <img src={require('./components/icons/manage.svg').default} alt="Language Settings" />
-                      </div>
-                      <div className="text-container">Language Settings</div>
-                      <div className="arrow-container">&gt;</div>
-                    </button>
-                  </div>
-                )}
-                {manageView === 'dishes' && (
-                  <div className="manage-content">
-                    <button className="back-button" onClick={handleBackToMenu}>&lt; Back to Menu</button>
-                    <DishManager
-                      newDish={newDish}
-                      categories={categories}
-                      ingredients={ingredients}
-                      categoryDishes={categoryDishes}
-                      onChange={(field, value) => setNewDish(prev => ({ ...prev, [field]: value }))}
-                      onAddIngredient={addDishIngredient}
-                      onUpdateIngredient={updateDishIngredient}
-                      onRemoveIngredient={removeDishIngredient}
-                      onCreate={createDish}
-                      onDishClick={handleOpenDish}
-                    />
-                  </div>
-                )}
-                {manageView === 'ingredients' && (
-                  <div className="manage-content">
-                    <button className="back-button" onClick={handleBackToMenu}>&lt; Back to Menu</button>
-                    <IngredientManager
-                      ingredients={ingredients}
-                      newIngredient={newIngredient}
-                      onNewChange={setNewIngredient}
-                      onAdd={createIngredient}
-                      onDelete={deleteIngredient}
-                    />
-                  </div>
-                )}
-                {manageView === 'categories' && (
-                  <div className="manage-content">
-                    <button className="back-button" onClick={handleBackToMenu}>&lt; Back to Menu</button>
-                    <div className="categories-section">
-                      <ul className="category-list">
-                        {categories.map(c => <li key={c._id}>{c.name}</li>)}
-                      </ul>
-                      <CategoryManager onCreate={createCategory} />
-                    </div>
-                  </div>
-                )}
-                {manageView === 'language' && (
-                  <div className="manage-content">
-                    <button className="back-button" onClick={handleBackToMenu}>&lt; Back to Menu</button>
-                    <div className="language-settings">
-                      <h2>Select Language</h2>
-                      <select onChange={(e) => updateLanguage(e.target.value)}>
-                        <option value="en">English</option>
-                        <option value="it">Italian</option>
-                        {/* Add more languages as needed */}
-                      </select>
-                    </div>
-                  </div>
-                )}
-              </div>
+              <ManageSection
+                categories={categories}
+                ingredients={ingredients}
+                newDish={newDish}
+                newIngredient={newIngredient}
+                categoryDishes={categoryDishes}
+                onDishChange={(field, value) => setNewDish(prev => ({ ...prev, [field]: value }))}
+                onAddDishIngredient={addDishIngredient}
+                onUpdateDishIngredient={updateDishIngredient}
+                onRemoveDishIngredient={removeDishIngredient}
+                onCreateDish={createDish}
+                onDishClick={handleOpenDish}
+                onCreateCategory={createCategory}
+                onNewIngredientChange={setNewIngredient}
+                onAddIngredient={createIngredient}
+                onDeleteIngredient={deleteIngredient}
+                userLanguage={userLanguage}
+                updateLanguage={updateLanguage}
+              />
             )}
           </div>
           <Tabs activeTab={activeTab} setActiveTab={setActiveTab} />

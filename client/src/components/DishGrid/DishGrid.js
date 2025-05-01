@@ -1,6 +1,7 @@
 import React from 'react';
-import logo from '../logo.svg';
-import texts from './Texts';
+import logo from '../icons/logo.svg';
+import texts from '../Texts';
+import './DishGrid.css'
 
 const DishGrid = ({ categories, categoryDishes, onDishClick, userLanguage }) => (
   <div className="categories-dishes">
