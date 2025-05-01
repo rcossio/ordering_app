@@ -19,7 +19,12 @@ const dishSchema = new mongoose.Schema({
 
 // Ingredient Schema
 const ingredientSchema = new mongoose.Schema({
-  name: { type: String, required: true, unique: true },
+  name: {
+    default: { type: String, required: true },
+    en: { type: String },
+    it: { type: String },
+    // Add more languages as needed
+  },
   unit: { type: String, enum: ['g', 'kg', 'unit', 'slice', 'general'], required: true },
   price: { type: Number, required: true },
 });
@@ -36,9 +41,16 @@ const orderSchema = new mongoose.Schema({
   createdAt: { type: Date, default: Date.now },
 });
 
+// Add User Schema for language configuration
+const userSchema = new mongoose.Schema({
+  username: { type: String, required: true, unique: true },
+  language: { type: String, default: 'en' }, // Default language is English
+});
+
+const User = mongoose.model('User', userSchema);
 const Category = mongoose.model('Category', categorySchema);
 const Dish = mongoose.model('Dish', dishSchema);
 const Ingredient = mongoose.model('Ingredient', ingredientSchema);
 const Order = mongoose.model('Order', orderSchema);
 
-module.exports = { Category, Dish, Ingredient, Order };
+module.exports = { Category, Dish, Ingredient, Order, User };

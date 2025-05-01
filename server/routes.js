@@ -1,6 +1,6 @@
 const express = require('express');
 const router = express.Router();
-const { Category, Dish, Ingredient, Order } = require('./models');
+const { Category, Dish, Ingredient, Order, User } = require('./models'); // Import User model
 
 // Fetch all categories
 router.get('/categories', async (req, res) => {
@@ -134,10 +134,21 @@ router.get('/ingredients', async (req, res) => {
   }
 });
 
+// Modify ingredient creation to handle localized names
 router.post('/ingredients', async (req, res) => {
   try {
     const { name, unit, price } = req.body;
-    const ingredient = new Ingredient({ name, unit, price });
+    const user = await User.findOne({ username: 'default' }); // Replace with actual user identification logic
+    const language = user ? user.language : 'default';
+
+    const ingredient = new Ingredient({
+      name: {
+        default: name,
+        [language]: name,
+      },
+      unit,
+      price,
+    });
     await ingredient.save();
     res.status(201).json(ingredient);
   } catch (err) {
@@ -206,6 +217,48 @@ router.get('/reports/ingredients', async (req, res) => {
     res.json(report);
   } catch (err) {
     res.status(500).json({ error: 'Failed to generate ingredient report', details: err.message });
+  }
+});
+
+// Get the user's language configuration
+router.get('/user/language', async (req, res) => {
+  try {
+    const user = await User.findOne({ username: 'default' }); // Replace with actual user identification logic
+    if (!user) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+    res.json({ language: user.language });
+  } catch (err) {
+    res.status(500).json({ error: 'Failed to fetch user language', details: err.message });
+  }
+});
+
+// Update the user's language configuration
+router.put('/user/language', async (req, res) => {
+  try {
+    const { language } = req.body;
+    const user = await User.findOneAndUpdate(
+      { username: 'default' }, // Replace with actual user identification logic
+      { language },
+      { new: true, upsert: true } // Create user if not exists
+    );
+    res.json(user);
+  } catch (err) {
+    res.status(500).json({ error: 'Failed to update user language', details: err.message });
+  }
+});
+
+// Endpoint to fetch a user by username
+router.get('/user/:username', async (req, res) => {
+  try {
+    const { username } = req.params;
+    const user = await User.findOne({ username });
+    if (!user) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+    res.json(user);
+  } catch (err) {
+    res.status(500).json({ error: 'Failed to fetch user', details: err.message });
   }
 });
 

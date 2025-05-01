@@ -52,6 +52,28 @@ const ensureBasicCategories = async () => {
   }
 };
 
+// Add a default user for development purposes
+if (process.env.NODE_ENV == 'development') {
+  const { User } = require('./models');
+
+  const createDefaultUser = async () => {
+    try {
+      const existingUser = await User.findOne({ username: 'user1' });
+      if (!existingUser) {
+        const user = new User({ username: 'user1', language: 'en' });
+        await user.save();
+        console.log('Default user created: user1');
+      } else {
+        console.log('Default user already exists: user1');
+      }
+    } catch (error) {
+      console.error('Error creating default user:', error);
+    }
+  };
+
+  createDefaultUser();
+}
+
 // Call ensureBasicCategories after connecting to the database and then start server
 mongoose.connect(process.env.MONGO_URI)
   .then(async () => {
