@@ -16,6 +16,21 @@ import CategoryManager from './components/CategoryManager';
 // API instance for backend (direct URL, server has CORS enabled)
 const API = axios.create({ baseURL: 'http://localhost:5000/api' });
 
+// Add an interceptor to include the username header after login
+// Ensure Content-Type header is set to application/json
+API.interceptors.request.use((config) => {
+  const username = localStorage.getItem('username'); // Store username in localStorage after login
+  if (username) {
+    config.headers['x-username'] = username;
+  }
+  if (!config.headers['Content-Type']) {
+    config.headers['Content-Type'] = 'application/json';
+  }
+  return config;
+}, (error) => {
+  return Promise.reject(error);
+});
+
 const App = () => {
   const [categories, setCategories] = useState([]);
   const [categoryDishes, setCategoryDishes] = useState({});
@@ -29,25 +44,32 @@ const App = () => {
   const [newIngredient, setNewIngredient] = useState({ name: '', unit: 'unit', price: 0 });
   const [selectedDish, setSelectedDish] = useState(null);
   const [showModal, setShowModal] = useState(false);
-  const [manageSubTab, setManageSubTab] = useState('dishes');
+  const [manageView, setManageView] = useState('menu'); // 'menu', 'dishes', 'ingredients', 'categories'
+  const [isLoggedIn, setIsLoggedIn] = useState(false);
+  const [username, setUsername] = useState('');
+  const [password, setPassword] = useState('');
 
+  // Move category fetching logic to after login
   useEffect(() => {
-    console.log('Fetching categories...');
-    API.get('/categories')
-      .then(response => {
-        console.log('Fetched categories:', response.data);
-        setCategories(response.data);
-      })
-      .catch(error => {
-        console.error('Error fetching categories:', error);
-      });
-  }, []);
+    if (isLoggedIn) {
+      API.get('/user/categories')
+        .then(response => {
+          setCategories(response.data);
+        })
+        .catch(error => {
+          console.error('Error fetching categories:', error);
+        });
+    }
+  }, [isLoggedIn]);
+
   // Fetch dishes for each category automatically
   useEffect(() => {
     if (categories.length) {
+      // Update the endpoint to fetch dishes by category name
       const promises = categories.map(cat =>
-        API.get(`/categories/${cat._id}/dishes`)
+        API.get(`/user/categories/${cat.name}/dishes`) // Use category name instead of ID
       );
+      // Add a console log to verify API responses for dishes
       Promise.all(promises)
         .then(results => {
           const map = {};
@@ -60,17 +82,20 @@ const App = () => {
     }
   }, [categories]);
 
-  // Fetch ingredients for management
+  // Fetch ingredients for management only after login
   useEffect(() => {
-    API.get('/ingredients')
-      .then(res => setIngredients(res.data))
-      .catch(err => console.error('Error fetching ingredients:', err));
-  }, []);
+    // Update the endpoint to fetch ingredients from the correct route
+    if (isLoggedIn) {
+      API.get('/user/ingredients') // Updated to use /user prefix
+        .then(res => setIngredients(res.data))
+        .catch(err => console.error('Error fetching ingredients:', err));
+    }
+  }, [isLoggedIn]);
 
   // Fetch orders when switching to Orders tab
   useEffect(() => {
     if (activeTab === 'orders') {
-      API.get('/orders')
+      API.get('/user/orders')
         .then(res => setOrders(res.data))
         .catch(err => console.error('Error fetching orders:', err));
     }
@@ -107,7 +132,7 @@ const App = () => {
   };
 
   const createDish = () => {
-    API.post('/dishes', newDish)
+    API.post('/user/dishes', newDish)
       .then(response => {
         const created = response.data;
         alert('Dish created successfully!');
@@ -123,7 +148,7 @@ const App = () => {
   };
 
   const createCategory = (name) => {
-    API.post('/categories', { name })
+    API.post('/user/categories', { name })
       .then(response => {
         setCategories(prev => [...prev, response.data]);
         alert('Category created successfully!');
@@ -138,7 +163,7 @@ const App = () => {
     if (!cart.length) return alert('Cart is empty');
     if (!window.confirm('Confirm and save this order?')) return;
     const total = calculateTotal();
-    API.post('/orders', { dishes: cart, total, discount, tip })
+    API.post('/user/orders', { dishes: cart, total, discount, tip })
       .then(() => {
         alert('Order saved!');
         setCart([]);
@@ -153,7 +178,7 @@ const App = () => {
 
   const deleteOrder = (id) => {
     if (!window.confirm('Delete this order?')) return;
-    API.delete(`/orders/${id}`)
+    API.delete(`/user/orders/${id}`)
       .then(() => setOrders(orders.filter(o => o._id !== id)))
       .catch(err => console.error('Error deleting order:', err));
   };
@@ -174,7 +199,7 @@ const App = () => {
   const createIngredient = () => {
     const { name, unit, price } = newIngredient;
     if (!name) return alert('Name required');
-    API.post('/ingredients', { name, unit, price })
+    API.post('/user/ingredients', { name, unit, price })
       .then(res => {
         setIngredients([...ingredients, res.data]);
         setNewIngredient({ name: '', unit: 'unit', price: 0 });
@@ -184,7 +209,7 @@ const App = () => {
 
   const deleteIngredient = (id) => {
     if (!window.confirm('Delete this ingredient?')) return;
-    API.delete(`/ingredients/${id}`)
+    API.delete(`/user/ingredients/${id}`)
       .then(() => setIngredients(ingredients.filter(i => i._id !== id)))
       .catch(err => console.error('Error deleting ingredient:', err));
   };
@@ -202,7 +227,7 @@ const App = () => {
 
   // Helper to reload dishes of a category
   const refreshCategoryDishes = (categoryId) => {
-    API.get(`/categories/${categoryId}/dishes`)
+    API.get(`/user/categories/${categoryId}/dishes`)
       .then(res => setCategoryDishes(prev => ({ ...prev, [categoryId]: res.data })))
       .catch(err => console.error('Error refreshing dishes for category', categoryId, err));
   };
@@ -211,7 +236,7 @@ const App = () => {
     console.log('Saving dish', dishToSave);
     // remove helper field before sending
     const { originalCategory, _id, ...dishData } = dishToSave;
-    API.put(`/dishes/${_id}`, dishData)
+    API.put(`/user/dishes/${_id}`, dishData)
       .then(res => {
         const updated = res.data;
         alert('Dish saved successfully!');
@@ -231,7 +256,7 @@ const App = () => {
   const confirmDeleteDish = () => {
     if (!window.confirm('Delete this dish?')) return;
     console.log('Deleting dish', selectedDish._id);
-    API.delete(`/dishes/${selectedDish._id}`)
+    API.delete(`/user/dishes/${selectedDish._id}`)
       .then(res => {
         console.log('Dish delete response', res.data);
         alert('Dish deleted successfully!');
@@ -244,78 +269,232 @@ const App = () => {
       });
   };
 
+  // Function to handle back navigation
+  const handleBackToMenu = () => setManageView('menu');
+
+  // Add swipe detection logic
+  useEffect(() => {
+    let touchStartX = 0;
+    let touchEndX = 0;
+
+    const handleTouchStart = (e) => {
+      touchStartX = e.changedTouches[0].screenX;
+    };
+
+    const handleTouchMove = (e) => {
+      touchEndX = e.changedTouches[0].screenX;
+    };
+
+    const handleTouchEnd = () => {
+      if (touchEndX > touchStartX + 50) { // Swipe right detected
+        handleBackToMenu();
+      }
+    };
+
+    const manageSection = document.querySelector('.manage-section');
+    if (manageSection) {
+      manageSection.addEventListener('touchstart', handleTouchStart);
+      manageSection.addEventListener('touchmove', handleTouchMove);
+      manageSection.addEventListener('touchend', handleTouchEnd);
+    }
+
+    return () => {
+      if (manageSection) {
+        manageSection.removeEventListener('touchstart', handleTouchStart);
+        manageSection.removeEventListener('touchmove', handleTouchMove);
+        manageSection.removeEventListener('touchend', handleTouchEnd);
+      }
+    };
+  }, [manageView]);
+
+  // Replace the title with the respective tab names
+  const getTabTitle = () => {
+    switch (activeTab) {
+      case 'cashier':
+        return 'Take an order';
+      case 'orders':
+        return 'Past orders';
+      case 'manage':
+        return 'Settings';
+      default:
+        return '';
+    }
+  };
+
+  // Define the updateLanguage function to handle language updates
+  const updateLanguage = (language) => {
+    API.put('/user/language', { language })
+      .then((response) => {
+        alert(`Language updated to ${response.data.language}`);
+      })
+      .catch((error) => {
+        console.error('Error updating language:', error);
+        alert('Failed to update language.');
+      });
+  };
+
+  // Update handleLogin to check if the user exists in the database
+  const handleLogin = (e) => {
+    e.preventDefault();
+    API.get(`/auth/user/${username}`) // Updated to use /auth prefix
+      .then((response) => {
+        if (response.data) {
+          setIsLoggedIn(true);
+          localStorage.setItem('username', username); // Store username in localStorage
+        } else {
+          alert('Invalid username or password.');
+        }
+      })
+      .catch((error) => {
+        console.error('Error during login:', error);
+        alert('Failed to login. Please try again.');
+      });
+  };
+
   return (
     <div className="App">
-      <h1>Ordering App</h1>
-      <div className="main-content">
-        {activeTab === 'cashier' && (
-          <>
-            <DishGrid categories={categories} categoryDishes={categoryDishes} onDishClick={addToCart} />
-            <Cart
-              cart={cart}
-              subtotal={calculateTotal()}
-              discount={discount}
-              tip={tip}
-              onRemove={removeFromCart}
-              onDiscountChange={setDiscount}
-              onTipChange={setTip}
-              onConfirm={confirmOrder}
+      {!isLoggedIn ? (
+        <div className="login-page">
+          <h1>Ordering App</h1>
+          <form onSubmit={handleLogin} className="login-form">
+            <input
+              type="text"
+              placeholder="Username"
+              value={username}
+              onChange={(e) => setUsername(e.target.value)}
             />
-          </>
-        )}
-        {activeTab === 'orders' && (
-          <OrdersList orders={orders} onDelete={deleteOrder} />
-        )}
-        {activeTab === 'manage' && (
-          <div className="manage-section">
-            <div className="manage-tabs">
-              <button type="button" onClick={() => setManageSubTab('dishes')} disabled={manageSubTab === 'dishes'}>Dishes</button>
-              <button type="button" onClick={() => setManageSubTab('ingredients')} disabled={manageSubTab === 'ingredients'}>Ingredients</button>
-              <button type="button" onClick={() => setManageSubTab('categories')} disabled={manageSubTab === 'categories'}>Categories</button>
-            </div>
-            {manageSubTab === 'dishes' && (
-              <DishManager
-                newDish={newDish}
-                categories={categories}
-                ingredients={ingredients}
-                categoryDishes={categoryDishes}
-                onChange={(field, value) => setNewDish(prev => ({ ...prev, [field]: value }))}
-                onAddIngredient={addDishIngredient}
-                onUpdateIngredient={updateDishIngredient}
-                onRemoveIngredient={removeDishIngredient}
-                onCreate={createDish}
-                onDishClick={handleOpenDish}
-              />
+            <input
+              type="password"
+              placeholder="Password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+            />
+            <button type="submit">Login</button>
+          </form>
+        </div>
+      ) : (
+        <>
+          <h1>{getTabTitle()}</h1>
+          <div className="main-content">
+            {activeTab === 'cashier' && (
+              <>
+                <DishGrid categories={categories} categoryDishes={categoryDishes} onDishClick={addToCart} />
+                <Cart
+                  cart={cart}
+                  subtotal={calculateTotal()}
+                  discount={discount}
+                  tip={tip}
+                  onRemove={removeFromCart}
+                  onDiscountChange={setDiscount}
+                  onTipChange={setTip}
+                  onConfirm={confirmOrder}
+                />
+              </>
             )}
-            {manageSubTab === 'ingredients' && (
-              <IngredientManager
-                ingredients={ingredients}
-                newIngredient={newIngredient}
-                onNewChange={setNewIngredient}
-                onAdd={createIngredient}
-                onDelete={deleteIngredient}
-              />
+            {activeTab === 'orders' && (
+              <OrdersList orders={orders} onDelete={deleteOrder} />
             )}
-            {manageSubTab === 'categories' && (
-              <div className="categories-section">
-                <ul className="category-list">
-                  {categories.map(c => <li key={c._id}>{c.name}</li>)}
-                </ul>
-                <CategoryManager onCreate={createCategory} />
+            {activeTab === 'manage' && (
+              <div className="manage-section">
+                {manageView === 'menu' && (
+                  <div className="manage-menu">
+                    <button onClick={() => setManageView('dishes')}>
+                      <div className="icon-container">
+                        <img src={require('./components/icons/dishes.svg').default} alt="Manage Dishes" />
+                      </div>
+                      <div className="text-container">Manage Dishes</div>
+                      <div className="arrow-container">&gt;</div>
+                    </button>
+                    <button onClick={() => setManageView('ingredients')}>
+                      <div className="icon-container">
+                        <img src={require('./components/icons/ingredients.svg').default} alt="Manage Ingredients" />
+                      </div>
+                      <div className="text-container">Manage Ingredients</div>
+                      <div className="arrow-container">&gt;</div>
+                    </button>
+                    <button onClick={() => setManageView('categories')}>
+                      <div className="icon-container">
+                        <img src={require('./components/icons/categories.svg').default} alt="Manage Categories" />
+                      </div>
+                      <div className="text-container">Manage Categories</div>
+                      <div className="arrow-container">&gt;</div>
+                    </button>
+                    <button onClick={() => setManageView('language')}>
+                      <div className="icon-container">
+                        <img src={require('./components/icons/manage.svg').default} alt="Language Settings" />
+                      </div>
+                      <div className="text-container">Language Settings</div>
+                      <div className="arrow-container">&gt;</div>
+                    </button>
+                  </div>
+                )}
+                {manageView === 'dishes' && (
+                  <div className="manage-content">
+                    <button className="back-button" onClick={handleBackToMenu}>&lt; Back to Menu</button>
+                    <DishManager
+                      newDish={newDish}
+                      categories={categories}
+                      ingredients={ingredients}
+                      categoryDishes={categoryDishes}
+                      onChange={(field, value) => setNewDish(prev => ({ ...prev, [field]: value }))}
+                      onAddIngredient={addDishIngredient}
+                      onUpdateIngredient={updateDishIngredient}
+                      onRemoveIngredient={removeDishIngredient}
+                      onCreate={createDish}
+                      onDishClick={handleOpenDish}
+                    />
+                  </div>
+                )}
+                {manageView === 'ingredients' && (
+                  <div className="manage-content">
+                    <button className="back-button" onClick={handleBackToMenu}>&lt; Back to Menu</button>
+                    <IngredientManager
+                      ingredients={ingredients}
+                      newIngredient={newIngredient}
+                      onNewChange={setNewIngredient}
+                      onAdd={createIngredient}
+                      onDelete={deleteIngredient}
+                    />
+                  </div>
+                )}
+                {manageView === 'categories' && (
+                  <div className="manage-content">
+                    <button className="back-button" onClick={handleBackToMenu}>&lt; Back to Menu</button>
+                    <div className="categories-section">
+                      <ul className="category-list">
+                        {categories.map(c => <li key={c._id}>{c.name}</li>)}
+                      </ul>
+                      <CategoryManager onCreate={createCategory} />
+                    </div>
+                  </div>
+                )}
+                {manageView === 'language' && (
+                  <div className="manage-content">
+                    <button className="back-button" onClick={handleBackToMenu}>&lt; Back to Menu</button>
+                    <div className="language-settings">
+                      <h2>Select Language</h2>
+                      <select onChange={(e) => updateLanguage(e.target.value)}>
+                        <option value="en">English</option>
+                        <option value="it">Italian</option>
+                        {/* Add more languages as needed */}
+                      </select>
+                    </div>
+                  </div>
+                )}
               </div>
             )}
           </div>
-        )}
-      </div>
-      <Tabs activeTab={activeTab} setActiveTab={setActiveTab} />
-      {showModal && selectedDish && (
-        <DishModal
-          dish={selectedDish}
-          categories={categories}
-          onSave={saveDish}
-          onDelete={confirmDeleteDish}
-          onClose={handleCloseModal}
-        />
+          <Tabs activeTab={activeTab} setActiveTab={setActiveTab} />
+          {showModal && selectedDish && (
+            <DishModal
+              dish={selectedDish}
+              categories={categories}
+              onSave={saveDish}
+              onDelete={confirmDeleteDish}
+              onClose={handleCloseModal}
+            />
+          )}
+        </>
       )}
     </div>
   );
